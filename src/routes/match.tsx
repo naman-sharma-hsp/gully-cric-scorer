@@ -724,13 +724,6 @@ function LiveScoring() {
         )}
       </div>
 
-        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("wide")}>Wide</Button>
-        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("noball")}>No Ball</Button>
-        <Button variant="secondary" className="h-14 font-bold" onClick={penalty}>Penalty</Button>
-        <Button variant="destructive" className="h-14 font-bold" onClick={() => setWicketDialog(true)}>Wicket</Button>
-        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("legbye")}>Leg Bye</Button>
-        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("bye")}>Bye</Button>
-      </div>
 
       {/* Dialogs */}
       <Dialog open={openCard} onOpenChange={setOpenCard}>
