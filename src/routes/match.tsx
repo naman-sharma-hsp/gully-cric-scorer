@@ -898,7 +898,7 @@ function SelectBatterDialog({ open, setOpen, title, pool, inn, onPick, settings,
   const { players } = useApp();
   const [striker, setStriker] = useState<string>("");
   const [ns, setNs] = useState<string>("");
-  const opening = !inn.strikerId;
+  const opening = inn.batters.length === 0;
   const available = pool.filter((id) => {
     const b = inn.batters.find((x) => x.playerId === id);
     if (!b) return true;
