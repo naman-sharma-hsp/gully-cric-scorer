@@ -445,8 +445,11 @@ function LiveScoring() {
   const [strikerDialog, setStrikerDialog] = useState(false);
   const [bowlerDialog, setBowlerDialog] = useState(false);
   const [miniCheckOpen, setMiniCheckOpen] = useState(false);
+  const [miniSwapPrompt, setMiniSwapPrompt] = useState(false);
   const [extraDialog, setExtraDialog] = useState<null | "wide" | "noball" | "bye" | "legbye">(null);
   const [wicketDialog, setWicketDialog] = useState(false);
+  const [wkDialog, setWkDialog] = useState(false);
+  const [retireDialog, setRetireDialog] = useState(false);
 
   // Determine batting order: append rellu-katta if applicable
   const battingPool = useMemo(() => {
@@ -460,15 +463,40 @@ function LiveScoring() {
     return ids;
   }, [bowlingSetup, s, m.relluKattaId]);
 
-  // Initial striker / non-striker selection
+  // Rellu Katta is currently batting? then exclude from bowling/fielding choices
+  const relluBatting = !!(s.relluKattaEnabled && m.relluKattaId &&
+    inn.batters.some((b) => b.playerId === m.relluKattaId && !b.out));
+  const fielderPool = useMemo(
+    () => bowlingPool.filter((id) => !(relluBatting && id === m.relluKattaId)),
+    [bowlingPool, relluBatting, m.relluKattaId],
+  );
+  const effectiveBowlerPool = fielderPool;
+
+  // Initial striker / non-striker selection — also re-prompts after wicket (slot cleared)
   useEffect(() => {
-    if (!inn.strikerId && !strikerDialog) setStrikerDialog(true);
-  }, [inn.strikerId]);
+    if (strikerDialog) return;
+    const moreBattersAvailable = inn.wickets < battingPool.length - (s.nonStriker ? 1 : 0);
+    if (!moreBattersAvailable) return;
+    if (!inn.strikerId) setStrikerDialog(true);
+    else if (s.nonStriker && !inn.nonStrikerId && inn.batters.length > 0) setStrikerDialog(true);
+  }, [inn.strikerId, inn.nonStrikerId, s.nonStriker]);
+
   useEffect(() => {
-    if (inn.strikerId && !inn.currentBowlerId && !bowlerDialog) {
+    if (inn.strikerId && !inn.currentBowlerId && !bowlerDialog && !miniCheckOpen) {
       if (s.miniCheck) setMiniCheckOpen(true); else setBowlerDialog(true);
     }
   }, [inn.strikerId, inn.currentBowlerId]);
+
+  // Mini-check: prompt to swap bowler after 3 legal balls in the current over
+  useEffect(() => {
+    if (!inn.miniCheckActive || !inn.currentBowlerId) return;
+    const ballsInOver = inn.legalBalls % 6;
+    const swapAt = inn.miniCheckBowlerSwapAt ?? 3;
+    if (ballsInOver === swapAt && !inn.miniCheckSecondBowlerId && !miniSwapPrompt) {
+      setMiniSwapPrompt(true);
+    }
+  }, [inn.legalBalls, inn.miniCheckActive, inn.currentBowlerId]);
+
 
   // End of innings / match detection
   useEffect(() => {
