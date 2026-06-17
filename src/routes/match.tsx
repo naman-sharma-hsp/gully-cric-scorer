@@ -665,50 +665,46 @@ function LiveScoring() {
       {/* Action row */}
       <div className="grid grid-cols-7 gap-1">
         <ActionBtn label="Undo" onClick={undo}><Undo2 className="h-3 w-3" /></ActionBtn>
-        <ActionBtn label={`NS ${s.nonStriker ? "On" : "Off"}`} onClick={() => updateCurrentMatch((mm) => ({ ...mm, settings: { ...mm.settings, nonStriker: !mm.settings.nonStriker } }))}>NS</ActionBtn>
+        <ActionBtn label={`NS ${s.nonStriker ? "On" : "Off"}`} onClick={() => {
+          const turningOn = !s.nonStriker;
+          updateCurrentMatch((mm) => ({ ...mm, settings: { ...mm.settings, nonStriker: turningOn } }));
+          if (turningOn && !inn.nonStrikerId) setStrikerDialog(true);
+          if (!turningOn) applyToInning((i) => ({ ...i, nonStrikerId: undefined }));
+        }}>NS</ActionBtn>
         <ActionBtn label="DismOver" onClick={() => {
-          if (confirm("Dismiss over: keep runs/wickets from this over?")) {
-            // keep — just clear current bowler so a new over picker opens
-            applyToInning((i) => ({ ...i, currentBowlerId: undefined, prevOverBowlerId: i.currentBowlerId }));
-          } else {
-            // discard — undo until start of this over
-            applyToInning((i) => {
-              let cur = i;
-              const startBalls = Math.floor(cur.legalBalls / 6) * 6;
-              while (cur.deliveries.length > 0) {
-                const last = cur.deliveries[cur.deliveries.length - 1];
-                if (last.overNumber < Math.floor(startBalls / 6) && last.isLegal) break;
-                cur = undoLastDelivery(cur, battingPool);
-                if (cur.legalBalls === startBalls) break;
-              }
-              return { ...cur, currentBowlerId: undefined };
-            });
-          }
-        }}><Pause className="h-3 w-3" /></ActionBtn>
-        <ActionBtn label="Retire" onClick={() => {
+          const keep = confirm("Dismiss over: keep runs/wickets from this over? (Cancel = discard)");
           applyToInning((i) => {
-            const b = i.batters.find((x) => x.playerId === i.strikerId);
-            if (b) { b.retired = true; b.out = false; }
-            return { ...i, strikerId: undefined };
+            const startBalls = Math.floor(i.legalBalls / 6) * 6;
+            // Number of legal balls bowled in the (incomplete) over to roll back
+            const ballsInOver = i.legalBalls - startBalls;
+            if (ballsInOver === 0) return { ...i, currentBowlerId: undefined, prevOverBowlerId: i.currentBowlerId };
+            if (keep) {
+              // Keep runs & wickets, restart over from ball 0. Mark this over's deliveries as no-longer-legal
+              // so they don't double-count when rebuilt later, and decrement bowler's legal balls.
+              const cur: InningState = JSON.parse(JSON.stringify(i));
+              const bowler = cur.bowlers.find((b) => b.playerId === cur.currentBowlerId);
+              if (bowler) bowler.balls = Math.max(0, bowler.balls - ballsInOver);
+              cur.legalBalls = startBalls;
+              for (const d of cur.deliveries) {
+                if (d.isLegal && d.overNumber === Math.floor(startBalls / 6)) d.isLegal = false;
+              }
+              cur.prevOverBowlerId = cur.currentBowlerId;
+              cur.currentBowlerId = undefined;
+              cur.miniCheckActive = false; cur.miniCheckSecondBowlerId = undefined;
+              return cur;
+            } else {
+              // Discard the over entirely
+              let cur = i;
+              while (cur.legalBalls > startBalls && cur.deliveries.length > 0) {
+                cur = undoLastDelivery(cur, battingPool);
+              }
+              return { ...cur, currentBowlerId: undefined, prevOverBowlerId: undefined, miniCheckActive: false, miniCheckSecondBowlerId: undefined };
+            }
           });
-          setStrikerDialog(true);
-        }}><RotateCcw className="h-3 w-3" /></ActionBtn>
+        }}><Pause className="h-3 w-3" /></ActionBtn>
+        <ActionBtn label="Retire" onClick={() => setRetireDialog(true)}><RotateCcw className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="Swap" onClick={() => applyToInning((i) => ({ ...i, strikerId: i.nonStrikerId, nonStrikerId: i.strikerId }))}><ArrowLeftRight className="h-3 w-3" /></ActionBtn>
-        <ActionBtn label="WK" onClick={() => {
-          const next = prompt("New wicketkeeper name (choose by typing exactly one of the fielder names):");
-          if (!next) return;
-          const ids = bowlingSetup.playerIds;
-          const match = ids.find((id) => players[id]?.name.toLowerCase() === next.trim().toLowerCase());
-          if (match) {
-            updateCurrentMatch((mm) => {
-              const isT1 = mm.team1.teamId === bowlingSetup.teamId;
-              return isT1
-                ? { ...mm, team1: { ...mm.team1, wicketkeeperId: match } }
-                : { ...mm, team2: { ...mm.team2, wicketkeeperId: match } };
-            });
-            toast.success(`Wicketkeeper: ${players[match]?.name}`);
-          } else toast.error("No fielder by that name");
-        }}><UserCog className="h-3 w-3" /></ActionBtn>
+        <ActionBtn label="WK" onClick={() => setWkDialog(true)}><UserCog className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="Voice" onClick={() => startVoice(score)}><Mic className="h-3 w-3" /></ActionBtn>
       </div>
 
@@ -717,6 +713,17 @@ function LiveScoring() {
         {[0, 1, 2, 3, 4, 6].map((n) => (
           <Button key={n} variant="outline" className="h-14 text-lg font-bold" onClick={() => score(n)}>{n}</Button>
         ))}
+        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("wide")}>Wide</Button>
+        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("noball")}>No Ball</Button>
+        <Button variant="secondary" className="h-14 font-bold" onClick={penalty}>Penalty</Button>
+        <Button variant="destructive" className="h-14 font-bold" onClick={() => setWicketDialog(true)}>Wicket</Button>
+        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("legbye")}>Leg Bye</Button>
+        <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("bye")}>Bye</Button>
+        {s.tipAndRun && (
+          <Button variant="secondary" className="h-14 font-bold col-span-2" onClick={() => score(1)} title="Tip and Run: any contact = 1 run, rotate strike">Tip+Run (1)</Button>
+        )}
+      </div>
+
         <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("wide")}>Wide</Button>
         <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("noball")}>No Ball</Button>
         <Button variant="secondary" className="h-14 font-bold" onClick={penalty}>Penalty</Button>
