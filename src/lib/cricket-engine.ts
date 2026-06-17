@@ -117,6 +117,9 @@ export function recordDelivery(inn: InningState, input: RecordDeliveryInput): In
       over: oversString(next.legalBalls),
       playerId: d.outBatsmanId,
     });
+    // Clear the slot of the dismissed batter so UI prompts a new one
+    if (d.outBatsmanId === next.strikerId) next.strikerId = undefined;
+    else if (d.outBatsmanId === next.nonStrikerId) next.nonStrikerId = undefined;
   }
 
   // Strike rotation on odd runs (off bat or byes/legbyes)
