@@ -74,9 +74,9 @@ function MatchSetup() {
 
       <Card className="gully-card space-y-4">
         <h3 className="display text-lg text-orange">Match Settings</h3>
-        <Stepper label="Overs per innings" value={overs} setValue={setOvers} min={1} max={100} />
-        <Stepper label="Players per team" value={playersPerTeam} setValue={setPlayersPerTeam} min={1} max={15} />
-        <Stepper label="Series (matches in row)" value={series} setValue={setSeries} min={1} max={10} />
+        <Stepper label="Overs per innings" value={overs} setValue={(v) => setOvers(v as number)} min={1} max={100} />
+        <Stepper label="Players per team" value={playersPerTeam} setValue={(v) => setPlayersPerTeam(v as number)} min={1} max={15} />
+        <Stepper label="Series (matches in row)" value={series} setValue={(v) => setSeries(v as number)} min={1} max={10} />
       </Card>
 
       <TeamPicker label="Team 1" setup={t1} setSetup={setT1} playersPerTeam={playersPerTeam} excludeTeamId={t2.teamId} />
@@ -994,11 +994,13 @@ function WicketDialog({ open, setOpen, inn, bowlingPool, battingStriker, batting
 
 // Voice: very small grammar
 function startVoice(score: (n: number) => void) {
-  const SR = (window as unknown as { webkitSpeechRecognition?: new () => SpeechRecognition; SpeechRecognition?: new () => SpeechRecognition }).webkitSpeechRecognition ?? (window as unknown as { SpeechRecognition?: new () => SpeechRecognition }).SpeechRecognition;
+  type SRCtor = new () => { lang: string; start: () => void; onresult: ((e: { results: { 0: { 0: { transcript: string } } }[] }) => void) | null; onerror: (() => void) | null };
+  const w = window as unknown as { webkitSpeechRecognition?: SRCtor; SpeechRecognition?: SRCtor };
+  const SR = w.webkitSpeechRecognition ?? w.SpeechRecognition;
   if (!SR) { toast.error("Voice not supported on this browser"); return; }
   const rec = new SR();
   rec.lang = "en-IN";
-  rec.onresult = (e: SpeechRecognitionEvent) => {
+  rec.onresult = (e) => {
     const t = e.results[0][0].transcript.toLowerCase();
     const map: Record<string, number> = { zero: 0, dot: 0, one: 1, two: 2, three: 3, four: 4, six: 6 };
     for (const k of Object.keys(map)) if (t.includes(k)) { score(map[k]); toast.success(`Voice: ${k}`); return; }
