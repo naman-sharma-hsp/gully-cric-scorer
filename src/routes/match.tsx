@@ -994,7 +994,10 @@ function WicketDialog({ open, setOpen, inn, bowlingPool, battingStriker, batting
 
 // Voice: very small grammar
 function startVoice(score: (n: number) => void) {
-  type SRCtor = new () => { lang: string; start: () => void; onresult: ((e: { results: { 0: { 0: { transcript: string } } }[] }) => void) | null; onerror: (() => void) | null };
+  type SRResult = { transcript: string };
+  type SREvent = { results: ArrayLike<ArrayLike<SRResult>> };
+  type SRInst = { lang: string; start: () => void; onresult: ((e: SREvent) => void) | null; onerror: (() => void) | null };
+  type SRCtor = new () => SRInst;
   const w = window as unknown as { webkitSpeechRecognition?: SRCtor; SpeechRecognition?: SRCtor };
   const SR = w.webkitSpeechRecognition ?? w.SpeechRecognition;
   if (!SR) { toast.error("Voice not supported on this browser"); return; }
