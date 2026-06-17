@@ -445,8 +445,11 @@ function LiveScoring() {
   const [strikerDialog, setStrikerDialog] = useState(false);
   const [bowlerDialog, setBowlerDialog] = useState(false);
   const [miniCheckOpen, setMiniCheckOpen] = useState(false);
+  const [miniSwapPrompt, setMiniSwapPrompt] = useState(false);
   const [extraDialog, setExtraDialog] = useState<null | "wide" | "noball" | "bye" | "legbye">(null);
   const [wicketDialog, setWicketDialog] = useState(false);
+  const [wkDialog, setWkDialog] = useState(false);
+  const [retireDialog, setRetireDialog] = useState(false);
 
   // Determine batting order: append rellu-katta if applicable
   const battingPool = useMemo(() => {
@@ -460,15 +463,40 @@ function LiveScoring() {
     return ids;
   }, [bowlingSetup, s, m.relluKattaId]);
 
-  // Initial striker / non-striker selection
+  // Rellu Katta is currently batting? then exclude from bowling/fielding choices
+  const relluBatting = !!(s.relluKattaEnabled && m.relluKattaId &&
+    inn.batters.some((b) => b.playerId === m.relluKattaId && !b.out));
+  const fielderPool = useMemo(
+    () => bowlingPool.filter((id) => !(relluBatting && id === m.relluKattaId)),
+    [bowlingPool, relluBatting, m.relluKattaId],
+  );
+  const effectiveBowlerPool = fielderPool;
+
+  // Initial striker / non-striker selection — also re-prompts after wicket (slot cleared)
   useEffect(() => {
-    if (!inn.strikerId && !strikerDialog) setStrikerDialog(true);
-  }, [inn.strikerId]);
+    if (strikerDialog) return;
+    const moreBattersAvailable = inn.wickets < battingPool.length - (s.nonStriker ? 1 : 0);
+    if (!moreBattersAvailable) return;
+    if (!inn.strikerId) setStrikerDialog(true);
+    else if (s.nonStriker && !inn.nonStrikerId && inn.batters.length > 0) setStrikerDialog(true);
+  }, [inn.strikerId, inn.nonStrikerId, s.nonStriker]);
+
   useEffect(() => {
-    if (inn.strikerId && !inn.currentBowlerId && !bowlerDialog) {
+    if (inn.strikerId && !inn.currentBowlerId && !bowlerDialog && !miniCheckOpen) {
       if (s.miniCheck) setMiniCheckOpen(true); else setBowlerDialog(true);
     }
   }, [inn.strikerId, inn.currentBowlerId]);
+
+  // Mini-check: prompt to swap bowler after 3 legal balls in the current over
+  useEffect(() => {
+    if (!inn.miniCheckActive || !inn.currentBowlerId) return;
+    const ballsInOver = inn.legalBalls % 6;
+    const swapAt = inn.miniCheckBowlerSwapAt ?? 3;
+    if (ballsInOver === swapAt && !inn.miniCheckSecondBowlerId && !miniSwapPrompt) {
+      setMiniSwapPrompt(true);
+    }
+  }, [inn.legalBalls, inn.miniCheckActive, inn.currentBowlerId]);
+
 
   // End of innings / match detection
   useEffect(() => {
@@ -637,50 +665,46 @@ function LiveScoring() {
       {/* Action row */}
       <div className="grid grid-cols-7 gap-1">
         <ActionBtn label="Undo" onClick={undo}><Undo2 className="h-3 w-3" /></ActionBtn>
-        <ActionBtn label={`NS ${s.nonStriker ? "On" : "Off"}`} onClick={() => updateCurrentMatch((mm) => ({ ...mm, settings: { ...mm.settings, nonStriker: !mm.settings.nonStriker } }))}>NS</ActionBtn>
+        <ActionBtn label={`NS ${s.nonStriker ? "On" : "Off"}`} onClick={() => {
+          const turningOn = !s.nonStriker;
+          updateCurrentMatch((mm) => ({ ...mm, settings: { ...mm.settings, nonStriker: turningOn } }));
+          if (turningOn && !inn.nonStrikerId) setStrikerDialog(true);
+          if (!turningOn) applyToInning((i) => ({ ...i, nonStrikerId: undefined }));
+        }}>NS</ActionBtn>
         <ActionBtn label="DismOver" onClick={() => {
-          if (confirm("Dismiss over: keep runs/wickets from this over?")) {
-            // keep — just clear current bowler so a new over picker opens
-            applyToInning((i) => ({ ...i, currentBowlerId: undefined, prevOverBowlerId: i.currentBowlerId }));
-          } else {
-            // discard — undo until start of this over
-            applyToInning((i) => {
-              let cur = i;
-              const startBalls = Math.floor(cur.legalBalls / 6) * 6;
-              while (cur.deliveries.length > 0) {
-                const last = cur.deliveries[cur.deliveries.length - 1];
-                if (last.overNumber < Math.floor(startBalls / 6) && last.isLegal) break;
-                cur = undoLastDelivery(cur, battingPool);
-                if (cur.legalBalls === startBalls) break;
-              }
-              return { ...cur, currentBowlerId: undefined };
-            });
-          }
-        }}><Pause className="h-3 w-3" /></ActionBtn>
-        <ActionBtn label="Retire" onClick={() => {
+          const keep = confirm("Dismiss over: keep runs/wickets from this over? (Cancel = discard)");
           applyToInning((i) => {
-            const b = i.batters.find((x) => x.playerId === i.strikerId);
-            if (b) { b.retired = true; b.out = false; }
-            return { ...i, strikerId: undefined };
+            const startBalls = Math.floor(i.legalBalls / 6) * 6;
+            // Number of legal balls bowled in the (incomplete) over to roll back
+            const ballsInOver = i.legalBalls - startBalls;
+            if (ballsInOver === 0) return { ...i, currentBowlerId: undefined, prevOverBowlerId: i.currentBowlerId };
+            if (keep) {
+              // Keep runs & wickets, restart over from ball 0. Mark this over's deliveries as no-longer-legal
+              // so they don't double-count when rebuilt later, and decrement bowler's legal balls.
+              const cur: InningState = JSON.parse(JSON.stringify(i));
+              const bowler = cur.bowlers.find((b) => b.playerId === cur.currentBowlerId);
+              if (bowler) bowler.balls = Math.max(0, bowler.balls - ballsInOver);
+              cur.legalBalls = startBalls;
+              for (const d of cur.deliveries) {
+                if (d.isLegal && d.overNumber === Math.floor(startBalls / 6)) d.isLegal = false;
+              }
+              cur.prevOverBowlerId = cur.currentBowlerId;
+              cur.currentBowlerId = undefined;
+              cur.miniCheckActive = false; cur.miniCheckSecondBowlerId = undefined;
+              return cur;
+            } else {
+              // Discard the over entirely
+              let cur = i;
+              while (cur.legalBalls > startBalls && cur.deliveries.length > 0) {
+                cur = undoLastDelivery(cur, battingPool);
+              }
+              return { ...cur, currentBowlerId: undefined, prevOverBowlerId: undefined, miniCheckActive: false, miniCheckSecondBowlerId: undefined };
+            }
           });
-          setStrikerDialog(true);
-        }}><RotateCcw className="h-3 w-3" /></ActionBtn>
+        }}><Pause className="h-3 w-3" /></ActionBtn>
+        <ActionBtn label="Retire" onClick={() => setRetireDialog(true)}><RotateCcw className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="Swap" onClick={() => applyToInning((i) => ({ ...i, strikerId: i.nonStrikerId, nonStrikerId: i.strikerId }))}><ArrowLeftRight className="h-3 w-3" /></ActionBtn>
-        <ActionBtn label="WK" onClick={() => {
-          const next = prompt("New wicketkeeper name (choose by typing exactly one of the fielder names):");
-          if (!next) return;
-          const ids = bowlingSetup.playerIds;
-          const match = ids.find((id) => players[id]?.name.toLowerCase() === next.trim().toLowerCase());
-          if (match) {
-            updateCurrentMatch((mm) => {
-              const isT1 = mm.team1.teamId === bowlingSetup.teamId;
-              return isT1
-                ? { ...mm, team1: { ...mm.team1, wicketkeeperId: match } }
-                : { ...mm, team2: { ...mm.team2, wicketkeeperId: match } };
-            });
-            toast.success(`Wicketkeeper: ${players[match]?.name}`);
-          } else toast.error("No fielder by that name");
-        }}><UserCog className="h-3 w-3" /></ActionBtn>
+        <ActionBtn label="WK" onClick={() => setWkDialog(true)}><UserCog className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="Voice" onClick={() => startVoice(score)}><Mic className="h-3 w-3" /></ActionBtn>
       </div>
 
@@ -695,7 +719,11 @@ function LiveScoring() {
         <Button variant="destructive" className="h-14 font-bold" onClick={() => setWicketDialog(true)}>Wicket</Button>
         <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("legbye")}>Leg Bye</Button>
         <Button variant="secondary" className="h-14 font-bold" onClick={() => setExtraDialog("bye")}>Bye</Button>
+        {s.tipAndRun && (
+          <Button variant="secondary" className="h-14 font-bold col-span-2" onClick={() => score(1)} title="Tip and Run: any contact = 1 run, rotate strike">Tip+Run (1)</Button>
+        )}
       </div>
+
 
       {/* Dialogs */}
       <Dialog open={openCard} onOpenChange={setOpenCard}>
@@ -707,25 +735,30 @@ function LiveScoring() {
 
       <SelectBatterDialog
         open={strikerDialog} setOpen={setStrikerDialog}
-        title={inn.strikerId ? "Next batter (incoming)" : "Opening batters"}
-        pool={battingPool} inn={inn} excludeOut nonStrikerNeeded={s.nonStriker && !inn.strikerId}
+        title={inn.batters.length === 0 ? "Opening batters" : "Next batter (incoming)"}
+        pool={battingPool} inn={inn}
         relluKattaId={m.relluKattaId} settings={s}
         onPick={(strikerId, nonStrikerId) => {
           applyToInning((i) => {
-            const newRemaining = i.battingOrderRemaining.filter((id) => id !== strikerId && id !== nonStrikerId);
-            const next: InningState = {
-              ...i,
-              strikerId: i.strikerId ?? strikerId,
-              nonStrikerId: nonStrikerId !== undefined ? nonStrikerId : i.nonStrikerId,
-              battingOrderRemaining: newRemaining,
-            };
-            // If opening: set striker AND non-striker
-            if (!i.strikerId) { next.strikerId = strikerId; next.nonStrikerId = nonStrikerId; }
-            else {
-              // Incoming batter replaces whichever side is empty
-              if (!i.strikerId) next.strikerId = strikerId;
-              else if (s.nonStriker && !i.nonStrikerId) next.nonStrikerId = strikerId;
-              else next.strikerId = strikerId;
+            const next: InningState = { ...i };
+            if (i.batters.length === 0) {
+              // Opening
+              next.strikerId = strikerId;
+              next.nonStrikerId = nonStrikerId;
+            } else if (!i.strikerId && !i.nonStrikerId) {
+              next.strikerId = strikerId;
+              if (s.nonStriker && nonStrikerId) next.nonStrikerId = nonStrikerId;
+            } else if (!i.strikerId) {
+              next.strikerId = strikerId;
+            } else if (!i.nonStrikerId) {
+              next.nonStrikerId = strikerId;
+            }
+            next.battingOrderRemaining = i.battingOrderRemaining.filter((id) => id !== strikerId && id !== nonStrikerId);
+            // Rellu-Katta takeover: if the incoming batter is the current bowler, they must stop bowling.
+            if (strikerId === i.currentBowlerId || nonStrikerId === i.currentBowlerId) {
+              next.prevOverBowlerId = i.currentBowlerId;
+              next.currentBowlerId = undefined;
+              toast.info("Rellu-Katta is batting now — pick a new bowler");
             }
             return next;
           });
@@ -735,18 +768,91 @@ function LiveScoring() {
 
       <SelectBowlerDialog
         open={bowlerDialog} setOpen={setBowlerDialog}
-        pool={bowlingPool} inn={inn} relluKattaId={m.relluKattaId}
+        pool={effectiveBowlerPool} inn={inn} relluKattaId={m.relluKattaId}
         prevBowlerId={inn.prevOverBowlerId}
         battingStrikerId={inn.strikerId} battingNonStrikerId={inn.nonStrikerId}
         overLimit={s.overLimit}
         onPick={(id) => {
-          applyToInning((i) => ({ ...i, currentBowlerId: id }));
+          applyToInning((i) => ({
+            ...i,
+            currentBowlerId: id,
+            miniCheckSecondBowlerId: i.miniCheckActive && i.miniCheckBowlerSwapAt && (i.legalBalls % 6) === i.miniCheckBowlerSwapAt ? id : i.miniCheckSecondBowlerId,
+          }));
           setBowlerDialog(false);
         }}
       />
 
       <MiniCheckDialog open={miniCheckOpen} setOpen={setMiniCheckOpen}
-        onChoose={(enable) => { setMiniCheckOpen(false); setBowlerDialog(true); if (enable) toast.info("Mini-check: bowler will be asked to swap after 3 balls"); }} />
+        onChoose={(enable) => {
+          setMiniCheckOpen(false);
+          if (enable) {
+            applyToInning((i) => ({ ...i, miniCheckActive: true, miniCheckBowlerSwapAt: 3, miniCheckSecondBowlerId: undefined }));
+            toast.info("Mini-check on: prompt to swap bowler after 3 balls");
+          } else {
+            applyToInning((i) => ({ ...i, miniCheckActive: false }));
+          }
+          setBowlerDialog(true);
+        }} />
+
+      <Dialog open={miniSwapPrompt} onOpenChange={setMiniSwapPrompt}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Mini-Check: 3 balls bowled</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">Swap bowler for the rest of the over, or let current bowler play "mini-full"?</p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              applyToInning((i) => ({ ...i, miniCheckActive: false }));
+              setMiniSwapPrompt(false);
+              toast.info("Mini-Full: bowler continues");
+            }}>Mini-Full</Button>
+            <Button onClick={() => {
+              applyToInning((i) => ({ ...i, prevOverBowlerId: i.currentBowlerId, currentBowlerId: undefined }));
+              setMiniSwapPrompt(false);
+              setBowlerDialog(true);
+            }}>Swap Bowler</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={wkDialog} onOpenChange={setWkDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Change Wicketkeeper</DialogTitle></DialogHeader>
+          <div className="space-y-1">
+            {fielderPool.map((id) => (
+              <Button key={id} variant={bowlingSetup.wicketkeeperId === id ? "default" : "outline"} className="w-full justify-start" onClick={() => {
+                updateCurrentMatch((mm) => {
+                  const isT1 = mm.team1.teamId === bowlingSetup.teamId;
+                  return isT1
+                    ? { ...mm, team1: { ...mm.team1, wicketkeeperId: id } }
+                    : { ...mm, team2: { ...mm.team2, wicketkeeperId: id } };
+                });
+                toast.success(`Wicketkeeper: ${players[id]?.name}`);
+                setWkDialog(false);
+              }}>{players[id]?.name}{bowlingSetup.wicketkeeperId === id ? " (current)" : ""}</Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={retireDialog} onOpenChange={setRetireDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Retire which batter?</DialogTitle></DialogHeader>
+          <div className="grid grid-cols-1 gap-2">
+            {[inn.strikerId, inn.nonStrikerId].filter(Boolean).map((id) => (
+              <Button key={id} variant="outline" onClick={() => {
+                applyToInning((i) => {
+                  const next: InningState = JSON.parse(JSON.stringify(i));
+                  const b = next.batters.find((x) => x.playerId === id);
+                  if (b) { b.retired = true; b.out = false; b.dismissalText = "retired"; }
+                  if (next.strikerId === id) next.strikerId = undefined;
+                  else if (next.nonStrikerId === id) next.nonStrikerId = undefined;
+                  return next;
+                });
+                setRetireDialog(false);
+              }}>{players[id!]?.name}</Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <ExtraDialog
         kind={extraDialog} open={!!extraDialog} setOpen={(o) => !o && setExtraDialog(null)}
@@ -767,7 +873,7 @@ function LiveScoring() {
 
       <WicketDialog
         open={wicketDialog} setOpen={setWicketDialog}
-        inn={inn} bowlingPool={bowlingPool} battingStriker={inn.strikerId} battingNonStriker={inn.nonStrikerId}
+        inn={inn} bowlingPool={fielderPool} battingStriker={inn.strikerId} battingNonStriker={inn.nonStrikerId}
         wicketkeeperId={bowlingSetup.wicketkeeperId} settings={s} freeHit={isFreeHit()}
         onSubmit={(d, runsOnBall) => {
           applyToInning((i) => recordDelivery(i, {
@@ -798,7 +904,7 @@ function SelectBatterDialog({ open, setOpen, title, pool, inn, onPick, settings,
   const { players } = useApp();
   const [striker, setStriker] = useState<string>("");
   const [ns, setNs] = useState<string>("");
-  const opening = !inn.strikerId;
+  const opening = inn.batters.length === 0;
   const available = pool.filter((id) => {
     const b = inn.batters.find((x) => x.playerId === id);
     if (!b) return true;
