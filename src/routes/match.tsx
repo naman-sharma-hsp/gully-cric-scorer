@@ -754,6 +754,12 @@ function LiveScoring() {
               next.nonStrikerId = strikerId;
             }
             next.battingOrderRemaining = i.battingOrderRemaining.filter((id) => id !== strikerId && id !== nonStrikerId);
+            // Rellu-Katta takeover: if the incoming batter is the current bowler, they must stop bowling.
+            if (strikerId === i.currentBowlerId || nonStrikerId === i.currentBowlerId) {
+              next.prevOverBowlerId = i.currentBowlerId;
+              next.currentBowlerId = undefined;
+              toast.info("Rellu-Katta is batting now — pick a new bowler");
+            }
             return next;
           });
           setStrikerDialog(false);
