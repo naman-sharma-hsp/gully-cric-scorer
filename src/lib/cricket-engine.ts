@@ -122,9 +122,11 @@ export function recordDelivery(inn: InningState, input: RecordDeliveryInput): In
     else if (d.outBatsmanId === next.nonStrikerId) next.nonStrikerId = undefined;
   }
 
-  // Strike rotation on odd runs (off bat or byes/legbyes)
+  // Strike rotation on odd runs (off bat or byes/legbyes). Skip if a slot is empty (wicket).
   if ((!input.extraKind || input.extraKind === "bye" || input.extraKind === "legbye" || input.extraKind === "noball") && input.runs % 2 === 1) {
-    [next.strikerId, next.nonStrikerId] = [next.nonStrikerId!, next.strikerId!];
+    if (next.strikerId && next.nonStrikerId) {
+      [next.strikerId, next.nonStrikerId] = [next.nonStrikerId, next.strikerId];
+    }
   }
 
   // Free hit logic
@@ -148,9 +150,11 @@ export function recordDelivery(inn: InningState, input: RecordDeliveryInput): In
     commentary: input.commentary,
   });
 
-  // End of over: swap strike
+  // End of over: swap strike (only if both batters present)
   if (input.isLegal && next.legalBalls % 6 === 0) {
-    [next.strikerId, next.nonStrikerId] = [next.nonStrikerId!, next.strikerId!];
+    if (next.strikerId && next.nonStrikerId) {
+      [next.strikerId, next.nonStrikerId] = [next.nonStrikerId, next.strikerId];
+    }
     next.prevOverBowlerId = next.currentBowlerId;
     next.currentBowlerId = undefined;
   }
