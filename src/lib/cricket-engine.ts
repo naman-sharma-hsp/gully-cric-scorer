@@ -157,6 +157,8 @@ export function recordDelivery(inn: InningState, input: RecordDeliveryInput): In
     }
     next.prevOverBowlerId = next.currentBowlerId;
     next.currentBowlerId = undefined;
+    next.miniCheckActive = false;
+    next.miniCheckSecondBowlerId = undefined;
   }
 
   return next;
