@@ -829,6 +829,24 @@ function LiveScoring() {
         </DialogContent>
       </Dialog>
 
+      <Dialog open={quitDialog} onOpenChange={setQuitDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Quit match?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            The match will be saved as a <span className="font-semibold text-orange">quit match</span> and you can resume it from History later.
+            It won't be added to any player or team stats until you finish it.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuitDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => {
+              setQuitDialog(false);
+              quitCurrentMatch();
+              toast.success("Match saved to History → Quit matches");
+            }}>Quit & Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={wkDialog} onOpenChange={setWkDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>Change Wicketkeeper</DialogTitle></DialogHeader>
