@@ -280,6 +280,10 @@ export interface TeamStat {
   teamId: string; name: string;
   matches: number; wins: number; losses: number;
 }
+export interface FieldStat {
+  playerId: string; name: string;
+  catches: number; runOuts: number; stumpings: number;
+}
 
 export function computeStats(matches: Match[], playerName: (id: string) => string, teamName: (id: string) => string) {
   const bat: Record<string, BatStat> = {};
