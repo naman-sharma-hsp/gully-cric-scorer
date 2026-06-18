@@ -505,7 +505,7 @@ function LiveScoring() {
   // End of innings / match detection
   useEffect(() => {
     const oversDone = inn.legalBalls >= s.overs * 6;
-    const allOut = inn.wickets >= battingPool.length - (s.nonStriker ? 1 : 0);
+    const allOut = inn.wickets >= (s.singleBatter ? battingPool.length : battingPool.length - (s.nonStriker ? 1 : 0));
     const targetChased = m.currentInning === 1 && inn.runs > m.innings[0].runs;
     if (oversDone || allOut || targetChased) {
       if (m.currentInning === 0) {
