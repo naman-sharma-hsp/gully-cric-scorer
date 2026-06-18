@@ -678,7 +678,7 @@ function LiveScoring() {
       )}
 
       {/* Action row */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-8 gap-1">
         <ActionBtn label="Undo" onClick={undo}><Undo2 className="h-3 w-3" /></ActionBtn>
         <ActionBtn label={`NS ${s.nonStriker ? "On" : "Off"}`} onClick={() => {
           const turningOn = !s.nonStriker;
@@ -721,6 +721,7 @@ function LiveScoring() {
         <ActionBtn label="Swap" onClick={() => applyToInning((i) => ({ ...i, strikerId: i.nonStrikerId, nonStrikerId: i.strikerId }))}><ArrowLeftRight className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="WK" onClick={() => setWkDialog(true)}><UserCog className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="Voice" onClick={() => startVoice(score)}><Mic className="h-3 w-3" /></ActionBtn>
+        <ActionBtn label="Quit" onClick={() => setQuitDialog(true)}><LogOut className="h-3 w-3" /></ActionBtn>
       </div>
 
       {/* Scoring grid */}
