@@ -451,6 +451,17 @@ function LiveScoring() {
   const [wicketDialog, setWicketDialog] = useState(false);
   const [wkDialog, setWkDialog] = useState(false);
   const [retireDialog, setRetireDialog] = useState(false);
+  const [quitDialog, setQuitDialog] = useState(false);
+
+  // Guard against accidental tab close / refresh while live
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   // Determine batting order: append rellu-katta if applicable
   const battingPool = useMemo(() => {
