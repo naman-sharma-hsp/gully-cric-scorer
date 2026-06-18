@@ -57,7 +57,7 @@ function InningCard({ inn, title, pname }: { inn: InningState; title: string; pn
               <tr key={b.playerId} className="border-t border-border">
                 <td className="py-1 text-left">
                   <div className="font-semibold">{pname(b.playerId)}</div>
-                  <div className="text-[10px] text-muted-foreground">{b.out ? b.dismissalText ?? "out" : b.retired ? "retired" : "not out"}</div>
+                  <div className="text-[10px] text-muted-foreground">{b.out ? dismissalFor(b.playerId) : b.retired ? "retired" : "not out"}</div>
                 </td>
                 <td className="text-center font-bold">{b.runs}</td>
                 <td className="text-center">{b.balls}</td>
