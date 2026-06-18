@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Minus, Plus, Undo2, ArrowLeftRight, UserCog, Mic, RotateCcw, Pause } from "lucide-react";
+import { Minus, Plus, Undo2, ArrowLeftRight, UserCog, Mic, RotateCcw, Pause, LogOut } from "lucide-react";
 import { AddPlayerRow } from "./teams";
 import type { Match, MatchSettings, MatchTeamSetup, InningState, Dismissal, DismissalKind } from "@/lib/cricket-types";
 import { emptyInning, recordDelivery, undoLastDelivery } from "@/lib/cricket-engine";
@@ -434,7 +434,7 @@ function TossStep() {
 
 // ============================================================ LIVE SCORING
 function LiveScoring() {
-  const { currentMatch, updateCurrentMatch, players, finalizeMatch } = useApp();
+  const { currentMatch, updateCurrentMatch, players, finalizeMatch, quitCurrentMatch } = useApp();
   const m = currentMatch!;
   const inn = m.innings[m.currentInning];
   const s = m.settings;
@@ -451,6 +451,17 @@ function LiveScoring() {
   const [wicketDialog, setWicketDialog] = useState(false);
   const [wkDialog, setWkDialog] = useState(false);
   const [retireDialog, setRetireDialog] = useState(false);
+  const [quitDialog, setQuitDialog] = useState(false);
+
+  // Guard against accidental tab close / refresh while live
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, []);
 
   // Determine batting order: append rellu-katta if applicable
   const battingPool = useMemo(() => {
@@ -667,7 +678,7 @@ function LiveScoring() {
       )}
 
       {/* Action row */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-8 gap-1">
         <ActionBtn label="Undo" onClick={undo}><Undo2 className="h-3 w-3" /></ActionBtn>
         <ActionBtn label={`NS ${s.nonStriker ? "On" : "Off"}`} onClick={() => {
           const turningOn = !s.nonStriker;
@@ -710,6 +721,7 @@ function LiveScoring() {
         <ActionBtn label="Swap" onClick={() => applyToInning((i) => ({ ...i, strikerId: i.nonStrikerId, nonStrikerId: i.strikerId }))}><ArrowLeftRight className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="WK" onClick={() => setWkDialog(true)}><UserCog className="h-3 w-3" /></ActionBtn>
         <ActionBtn label="Voice" onClick={() => startVoice(score)}><Mic className="h-3 w-3" /></ActionBtn>
+        <ActionBtn label="Quit" onClick={() => setQuitDialog(true)}><LogOut className="h-3 w-3" /></ActionBtn>
       </div>
 
       {/* Scoring grid */}
@@ -813,6 +825,24 @@ function LiveScoring() {
               setMiniSwapPrompt(false);
               setBowlerDialog(true);
             }}>Swap Bowler</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={quitDialog} onOpenChange={setQuitDialog}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Quit match?</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            The match will be saved as a <span className="font-semibold text-orange">quit match</span> and you can resume it from History later.
+            It won't be added to any player or team stats until you finish it.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQuitDialog(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={() => {
+              setQuitDialog(false);
+              quitCurrentMatch();
+              toast.success("Match saved to History → Quit matches");
+            }}>Quit & Save</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

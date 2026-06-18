@@ -6,6 +6,7 @@ interface AppState {
   players: Record<string, Player>;
   teams: Record<string, Team>;
   matches: Match[]; // finished matches (history)
+  quitMatches: Match[]; // paused/quit matches that can be resumed
   currentMatch: Match | null;
 
   // player CRUD
@@ -21,6 +22,9 @@ interface AppState {
   updateCurrentMatch: (fn: (m: Match) => Match) => void;
   finalizeMatch: (m: Match) => void;
   deleteMatch: (id: string) => void;
+  quitCurrentMatch: () => void;
+  resumeQuitMatch: (id: string) => void;
+  deleteQuitMatch: (id: string) => void;
 }
 
 function uid() {
@@ -33,6 +37,7 @@ export const useApp = create<AppState>()(
       players: {},
       teams: {},
       matches: [],
+      quitMatches: [],
       currentMatch: null,
 
       addPlayer: (name, photo) => {
@@ -67,9 +72,31 @@ export const useApp = create<AppState>()(
       finalizeMatch: (m) =>
         set((s) => ({
           matches: [m, ...s.matches.filter((x) => x.id !== m.id)],
+          quitMatches: s.quitMatches.filter((x) => x.id !== m.id),
           currentMatch: null,
         })),
       deleteMatch: (id) => set((s) => ({ matches: s.matches.filter((m) => m.id !== id) })),
+      quitCurrentMatch: () =>
+        set((s) => {
+          if (!s.currentMatch) return s;
+          const quit: Match = { ...s.currentMatch, status: "quit", quitAt: Date.now() };
+          return {
+            quitMatches: [quit, ...s.quitMatches.filter((x) => x.id !== quit.id)],
+            currentMatch: null,
+          };
+        }),
+      resumeQuitMatch: (id) =>
+        set((s) => {
+          const m = s.quitMatches.find((x) => x.id === id);
+          if (!m) return s;
+          const resumed: Match = { ...m, status: "live" };
+          return {
+            currentMatch: resumed,
+            quitMatches: s.quitMatches.filter((x) => x.id !== id),
+          };
+        }),
+      deleteQuitMatch: (id) =>
+        set((s) => ({ quitMatches: s.quitMatches.filter((m) => m.id !== id) })),
     }),
     { name: "gully-cricket-v1" },
   ),
