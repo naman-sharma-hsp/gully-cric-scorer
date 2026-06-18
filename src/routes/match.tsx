@@ -57,7 +57,7 @@ function MatchSetup() {
       wideRuns: 1, noBallRuns: 1,
       freeHitAfterNoBall: true, miniCheck: false, overLimit: null,
       tipAndRun: false, oneHandOneBounce: false, lastBallFreeHit: false,
-      nonStriker: true, retiredCanReturn: false, relluKattaEnabled: false,
+      nonStriker: true, singleBatter: false, retiredCanReturn: false, relluKattaEnabled: false,
     };
     const m: Match = {
       id: uid(), createdAt: Date.now(), settings,
@@ -233,6 +233,7 @@ function RulesStep() {
       <Card className="gully-card space-y-3">
         <h3 className="display text-lg text-orange">Batting Rules</h3>
         <Toggle label="Non-Striker (2 batters)" value={s.nonStriker} setValue={(v) => set({ nonStriker: v })} />
+        <Toggle label="Single Batter (last man stands)" value={s.singleBatter} setValue={(v) => set({ singleBatter: v })} />
         <Toggle label="Retired Batsman Can Return" value={s.retiredCanReturn} setValue={(v) => set({ retiredCanReturn: v })} />
       </Card>
 
@@ -475,10 +476,13 @@ function LiveScoring() {
   // Initial striker / non-striker selection — also re-prompts after wicket (slot cleared)
   useEffect(() => {
     if (strikerDialog) return;
-    const moreBattersAvailable = inn.wickets < battingPool.length - (s.nonStriker ? 1 : 0);
+    const maxOuts = s.singleBatter ? battingPool.length : battingPool.length - (s.nonStriker ? 1 : 0);
+    const moreBattersAvailable = inn.wickets < maxOuts;
     if (!moreBattersAvailable) return;
     if (!inn.strikerId) setStrikerDialog(true);
-    else if (s.nonStriker && !inn.nonStrikerId && inn.batters.length > 0) setStrikerDialog(true);
+    // If singleBatter and only 1 batter left to bat (last man), don't prompt for non-striker
+    else if (s.nonStriker && !inn.nonStrikerId && inn.batters.length > 0 &&
+      !(s.singleBatter && inn.wickets >= battingPool.length - 1)) setStrikerDialog(true);
   }, [inn.strikerId, inn.nonStrikerId, s.nonStriker]);
 
   useEffect(() => {
@@ -501,7 +505,7 @@ function LiveScoring() {
   // End of innings / match detection
   useEffect(() => {
     const oversDone = inn.legalBalls >= s.overs * 6;
-    const allOut = inn.wickets >= battingPool.length - (s.nonStriker ? 1 : 0);
+    const allOut = inn.wickets >= (s.singleBatter ? battingPool.length : battingPool.length - (s.nonStriker ? 1 : 0));
     const targetChased = m.currentInning === 1 && inn.runs > m.innings[0].runs;
     if (oversDone || allOut || targetChased) {
       if (m.currentInning === 0) {
