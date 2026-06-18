@@ -48,6 +48,12 @@ function StatsPage() {
         <Award title="⚫ Dot Ball Dominator" subtitle="Most dot balls" rows={top(stats.bowl, (b) => b.dots).map((b) => [b.name, `${b.dots} dots`])} />
       </Section>
 
+      <Section title="Fielding" color="lime">
+        <Award title="🧤 Catch Expert" subtitle="Most catches" rows={top(stats.field, (f) => f.catches).map((f) => [f.name, `${f.catches} ct`])} />
+        <Award title="🎯 GunShot Throw" subtitle="Most run outs" rows={top(stats.field, (f) => f.runOuts).map((f) => [f.name, `${f.runOuts} ro`])} />
+        <Award title="🔥 Fiery Hands" subtitle="Most stumpings" rows={top(stats.field, (f) => f.stumpings).map((f) => [f.name, `${f.stumpings} st`])} />
+      </Section>
+
       <Section title="Teams" color="orange">
         <Award title="🏆 Most Wins" rows={top(stats.team, (t) => t.wins).map((t) => [t.name, `${t.wins} W`])} />
         <Award title="🎮 Most Matches" rows={top(stats.team, (t) => t.matches).map((t) => [t.name, `${t.matches} M`])} />
