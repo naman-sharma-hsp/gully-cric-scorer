@@ -1,6 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Trophy, ListOrdered, History as HistoryIcon, Users } from "lucide-react";
-import logoAsset from "@/assets/logo.png.asset.json";
 
 const tabs = [
   { to: "/match", label: "Match", Icon: Trophy },
@@ -16,7 +15,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-40 flex items-center gap-3 border-b border-border bg-card/95 px-4 py-3 backdrop-blur">
-        <img src={logoAsset.url} alt="Gully Cricket Scorer" className="h-9 w-9 rounded-full object-cover" />
+        {/* FIXED: src now points directly to your public folder version */}
+        <img 
+          src="/logo-transparent.png" 
+          alt="Gully Cricket Scorer" 
+          className="h-9 w-9 rounded-full object-cover" 
+        />
         <div className="flex flex-col leading-tight">
           <span className="display text-lg tracking-wide text-foreground">GULLY CRICKET SCORER</span>
           <span className="text-[10px] uppercase tracking-[0.2em] text-orange">street rules · real game</span>
