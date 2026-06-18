@@ -1,25 +1,32 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useApp } from "@/lib/store";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2 } from "lucide-react";
+import { Trash2, Play } from "lucide-react";
 import { useState, useMemo } from "react";
 import { MatchSummary } from "@/components/match/MatchSummary";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/history")({
   head: () => ({ meta: [{ title: "History · Gully Cricket Scorer" }] }),
   component: HistoryPage,
 });
 
+type Tab = "finished" | "quit";
+
 function HistoryPage() {
-  const { matches, teams, deleteMatch } = useApp();
+  const { matches, quitMatches, teams, deleteMatch, resumeQuitMatch, deleteQuitMatch, currentMatch } = useApp();
+  const nav = useNavigate();
+  const [tab, setTab] = useState<Tab>("finished");
   const [team1, setTeam1] = useState<string>("any");
   const [team2, setTeam2] = useState<string>("any");
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const source = tab === "finished" ? matches : quitMatches;
+
   const filtered = useMemo(() => {
-    return matches.filter((m) => {
+    return source.filter((m) => {
       const ids = [m.team1.teamId, m.team2.teamId];
       if (team1 !== "any" && !ids.includes(team1)) return false;
       if (team2 !== "any" && !ids.includes(team2)) return false;
@@ -28,7 +35,7 @@ function HistoryPage() {
       }
       return true;
     });
-  }, [matches, team1, team2]);
+  }, [source, team1, team2]);
 
   const opened = matches.find((m) => m.id === openId) ?? null;
 
@@ -41,9 +48,27 @@ function HistoryPage() {
     );
   }
 
+  function resume(id: string) {
+    if (currentMatch) {
+      if (!confirm("You already have a match in progress. Resuming will replace it (current match will be lost). Continue?")) return;
+    }
+    resumeQuitMatch(id);
+    toast.success("Resuming match…");
+    nav({ to: "/match" });
+  }
+
   return (
     <div className="mx-auto max-w-xl space-y-4 p-4">
       <h2 className="display text-2xl text-foreground">History</h2>
+
+      <div className="grid grid-cols-2 gap-2">
+        <Button variant={tab === "finished" ? "default" : "outline"} onClick={() => setTab("finished")}>
+          Finished ({matches.length})
+        </Button>
+        <Button variant={tab === "quit" ? "default" : "outline"} onClick={() => setTab("quit")}>
+          Quit matches ({quitMatches.length})
+        </Button>
+      </div>
 
       <Card className="gully-card grid gap-2 sm:grid-cols-2">
         <FilterSelect value={team1} onChange={setTeam1} label="Team A" teams={teams} />
@@ -52,7 +77,7 @@ function HistoryPage() {
 
       {filtered.length === 0 && (
         <p className="rounded-md border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
-          No matches found.
+          {tab === "quit" ? "No quit matches saved." : "No matches found."}
         </p>
       )}
 
@@ -61,25 +86,50 @@ function HistoryPage() {
           const winId = m.result?.winnerTeamId;
           const t1Win = winId === m.team1.teamId;
           const t2Win = winId === m.team2.teamId;
+          const isQuit = tab === "quit";
           return (
-            <Card key={m.id} className="gully-card cursor-pointer" onClick={() => setOpenId(m.id)}>
+            <Card
+              key={m.id}
+              className="gully-card cursor-pointer"
+              onClick={() => (isQuit ? resume(m.id) : setOpenId(m.id))}
+            >
               <div className="flex items-start justify-between">
                 <div className="flex-1 space-y-2">
-                  <div className="text-xs text-muted-foreground">{new Date(m.createdAt).toLocaleString()}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{new Date(m.createdAt).toLocaleString()}</span>
+                    {isQuit && <span className="rounded bg-orange/20 px-1.5 py-0.5 font-bold uppercase text-orange">Paused</span>}
+                  </div>
                   <TeamLine name={m.team1.teamName} score={m.innings[0].battingTeamId === m.team1.teamId ? m.innings[0] : m.innings[1]} highlight={t1Win} />
                   <TeamLine name={m.team2.teamName} score={m.innings[0].battingTeamId === m.team2.teamId ? m.innings[0] : m.innings[1]} highlight={t2Win} />
-                  <div className="pt-1 text-sm font-bold text-orange">{m.result?.margin ?? "In progress"}</div>
+                  <div className="pt-1 text-sm font-bold text-orange">
+                    {isQuit ? "Tap to resume" : (m.result?.margin ?? "In progress")}
+                  </div>
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (confirm("Delete this match? Stats will be recomputed.")) deleteMatch(m.id);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                <div className="flex flex-col gap-1">
+                  {isQuit && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={(e) => { e.stopPropagation(); resume(m.id); }}
+                      title="Resume match"
+                    >
+                      <Play className="h-4 w-4 text-lime" />
+                    </Button>
+                  )}
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const msg = isQuit ? "Delete this quit match permanently?" : "Delete this match? Stats will be recomputed.";
+                      if (confirm(msg)) {
+                        if (isQuit) deleteQuitMatch(m.id); else deleteMatch(m.id);
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
               </div>
             </Card>
           );
