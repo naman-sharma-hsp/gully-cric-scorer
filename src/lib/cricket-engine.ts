@@ -280,11 +280,16 @@ export interface TeamStat {
   teamId: string; name: string;
   matches: number; wins: number; losses: number;
 }
+export interface FieldStat {
+  playerId: string; name: string;
+  catches: number; runOuts: number; stumpings: number;
+}
 
 export function computeStats(matches: Match[], playerName: (id: string) => string, teamName: (id: string) => string) {
   const bat: Record<string, BatStat> = {};
   const bowl: Record<string, BowlStat> = {};
   const team: Record<string, TeamStat> = {};
+  const field: Record<string, FieldStat> = {};
 
   for (const m of matches) {
     const teamIds = [m.team1.teamId, m.team2.teamId];
@@ -315,7 +320,13 @@ export function computeStats(matches: Match[], playerName: (id: string) => strin
         bowl[bo.playerId].wickets += bo.wickets;
         bowl[bo.playerId].dots += bo.dots;
       }
+      for (const f of Object.values(inn.fielders)) {
+        if (!field[f.playerId]) field[f.playerId] = { playerId: f.playerId, name: playerName(f.playerId), catches: 0, runOuts: 0, stumpings: 0 };
+        field[f.playerId].catches += f.catches;
+        field[f.playerId].runOuts += f.runOuts;
+        field[f.playerId].stumpings += f.stumpings;
+      }
     }
   }
-  return { bat: Object.values(bat), bowl: Object.values(bowl), team: Object.values(team) };
+  return { bat: Object.values(bat), bowl: Object.values(bowl), team: Object.values(team), field: Object.values(field) };
 }
