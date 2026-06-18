@@ -6,6 +6,7 @@ interface AppState {
   players: Record<string, Player>;
   teams: Record<string, Team>;
   matches: Match[]; // finished matches (history)
+  quitMatches: Match[]; // paused/quit matches that can be resumed
   currentMatch: Match | null;
 
   // player CRUD
@@ -21,6 +22,9 @@ interface AppState {
   updateCurrentMatch: (fn: (m: Match) => Match) => void;
   finalizeMatch: (m: Match) => void;
   deleteMatch: (id: string) => void;
+  quitCurrentMatch: () => void;
+  resumeQuitMatch: (id: string) => void;
+  deleteQuitMatch: (id: string) => void;
 }
 
 function uid() {
