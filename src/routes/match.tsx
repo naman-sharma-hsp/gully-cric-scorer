@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Minus, Plus, Undo2, ArrowLeftRight, UserCog, Mic, RotateCcw, Pause } from "lucide-react";
+import { Minus, Plus, Undo2, ArrowLeftRight, UserCog, Mic, RotateCcw, Pause, LogOut } from "lucide-react";
 import { AddPlayerRow } from "./teams";
 import type { Match, MatchSettings, MatchTeamSetup, InningState, Dismissal, DismissalKind } from "@/lib/cricket-types";
 import { emptyInning, recordDelivery, undoLastDelivery } from "@/lib/cricket-engine";
