@@ -289,6 +289,7 @@ export function computeStats(matches: Match[], playerName: (id: string) => strin
   const bat: Record<string, BatStat> = {};
   const bowl: Record<string, BowlStat> = {};
   const team: Record<string, TeamStat> = {};
+  const field: Record<string, FieldStat> = {};
 
   for (const m of matches) {
     const teamIds = [m.team1.teamId, m.team2.teamId];
