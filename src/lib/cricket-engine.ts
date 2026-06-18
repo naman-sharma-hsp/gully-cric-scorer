@@ -320,7 +320,13 @@ export function computeStats(matches: Match[], playerName: (id: string) => strin
         bowl[bo.playerId].wickets += bo.wickets;
         bowl[bo.playerId].dots += bo.dots;
       }
+      for (const f of Object.values(inn.fielders)) {
+        if (!field[f.playerId]) field[f.playerId] = { playerId: f.playerId, name: playerName(f.playerId), catches: 0, runOuts: 0, stumpings: 0 };
+        field[f.playerId].catches += f.catches;
+        field[f.playerId].runOuts += f.runOuts;
+        field[f.playerId].stumpings += f.stumpings;
+      }
     }
   }
-  return { bat: Object.values(bat), bowl: Object.values(bowl), team: Object.values(team) };
+  return { bat: Object.values(bat), bowl: Object.values(bowl), team: Object.values(team), field: Object.values(field) };
 }
