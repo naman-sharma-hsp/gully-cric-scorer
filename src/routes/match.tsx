@@ -434,7 +434,7 @@ function TossStep() {
 
 // ============================================================ LIVE SCORING
 function LiveScoring() {
-  const { currentMatch, updateCurrentMatch, players, finalizeMatch } = useApp();
+  const { currentMatch, updateCurrentMatch, players, finalizeMatch, quitCurrentMatch } = useApp();
   const m = currentMatch!;
   const inn = m.innings[m.currentInning];
   const s = m.settings;
