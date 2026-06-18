@@ -116,6 +116,7 @@ export interface MatchSettings {
   oneHandOneBounce: boolean;
   lastBallFreeHit: boolean;
   nonStriker: boolean;
+  singleBatter: boolean;
   retiredCanReturn: boolean;
   relluKattaEnabled: boolean;
   relluKattaName?: string;
