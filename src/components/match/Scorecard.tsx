@@ -14,10 +14,31 @@ export function Scorecard({ match }: { match: Match }) {
   );
 }
 
+function dismissalText(d: NonNullable<InningState["deliveries"][number]["dismissal"]>, pname: (id?: string) => string): string {
+  switch (d.kind) {
+    case "Bowled": return `b ${pname(d.bowlerId)}`;
+    case "LBW": return `lbw b ${pname(d.bowlerId)}`;
+    case "Caught": return `c ${pname(d.fielderId)} b ${pname(d.bowlerId)}`;
+    case "Caught And Bowled": return `c & b ${pname(d.bowlerId)}`;
+    case "Stumped": return `st ${pname(d.fielderId)} b ${pname(d.bowlerId)}`;
+    case "Run Out": return `run out (${pname(d.fielderId)})`;
+    case "Hit Wicket": return `hit wicket b ${pname(d.bowlerId)}`;
+    case "Obstructing the Field": return `obstructing the field`;
+    case "Hit the Ball Twice": return `hit the ball twice`;
+    case "Timed Out": return `timed out`;
+    case "One Hand One Bounce": return `1h1b (${pname(d.fielderId)}) b ${pname(d.bowlerId)}`;
+    default: return "out";
+  }
+}
+
 function InningCard({ inn, title, pname }: { inn: InningState; title: string; pname: (id?: string) => string }) {
   if (inn.deliveries.length === 0) return null;
   const overs = `${Math.floor(inn.legalBalls / 6)}.${inn.legalBalls % 6}`;
   const totalExtras = inn.extras.wide + inn.extras.noball + inn.extras.bye + inn.extras.legbye + inn.extras.penalty;
+  const dismissalFor = (playerId: string) => {
+    const d = inn.deliveries.find((x) => x.dismissal?.outBatsmanId === playerId)?.dismissal;
+    return d ? dismissalText(d, pname) : "out";
+  };
   return (
     <Card className="gully-card space-y-3">
       <div className="flex items-center justify-between">
