@@ -57,7 +57,7 @@ function MatchSetup() {
       wideRuns: 1, noBallRuns: 1,
       freeHitAfterNoBall: true, miniCheck: false, overLimit: null,
       tipAndRun: false, oneHandOneBounce: false, lastBallFreeHit: false,
-      nonStriker: true, retiredCanReturn: false, relluKattaEnabled: false,
+      nonStriker: true, singleBatter: false, retiredCanReturn: false, relluKattaEnabled: false,
     };
     const m: Match = {
       id: uid(), createdAt: Date.now(), settings,
