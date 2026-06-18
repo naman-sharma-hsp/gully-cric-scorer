@@ -476,10 +476,13 @@ function LiveScoring() {
   // Initial striker / non-striker selection — also re-prompts after wicket (slot cleared)
   useEffect(() => {
     if (strikerDialog) return;
-    const moreBattersAvailable = inn.wickets < battingPool.length - (s.nonStriker ? 1 : 0);
+    const maxOuts = s.singleBatter ? battingPool.length : battingPool.length - (s.nonStriker ? 1 : 0);
+    const moreBattersAvailable = inn.wickets < maxOuts;
     if (!moreBattersAvailable) return;
     if (!inn.strikerId) setStrikerDialog(true);
-    else if (s.nonStriker && !inn.nonStrikerId && inn.batters.length > 0) setStrikerDialog(true);
+    // If singleBatter and only 1 batter left to bat (last man), don't prompt for non-striker
+    else if (s.nonStriker && !inn.nonStrikerId && inn.batters.length > 0 &&
+      !(s.singleBatter && inn.wickets >= battingPool.length - 1)) setStrikerDialog(true);
   }, [inn.strikerId, inn.nonStrikerId, s.nonStriker]);
 
   useEffect(() => {
