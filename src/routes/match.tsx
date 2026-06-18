@@ -233,6 +233,7 @@ function RulesStep() {
       <Card className="gully-card space-y-3">
         <h3 className="display text-lg text-orange">Batting Rules</h3>
         <Toggle label="Non-Striker (2 batters)" value={s.nonStriker} setValue={(v) => set({ nonStriker: v })} />
+        <Toggle label="Single Batter (last man stands)" value={s.singleBatter} setValue={(v) => set({ singleBatter: v })} />
         <Toggle label="Retired Batsman Can Return" value={s.retiredCanReturn} setValue={(v) => set({ retiredCanReturn: v })} />
       </Card>
 
