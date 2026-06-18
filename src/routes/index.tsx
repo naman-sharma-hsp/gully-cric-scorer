@@ -17,14 +17,14 @@ export const Route = createFileRoute("/")({
 function Splash() {
   const nav = useNavigate();
   useEffect(() => {
-    const t = setTimeout(() => nav({ to: "/match" }), 1800);
+    const t = setTimeout(() => nav({ to: "/match" }), 2300);
     return () => clearTimeout(t);
   }, [nav]);
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background brush-bg">
-      <div className="relative">
-        <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-black/40 shadow-[inset_-8px_-8px_20px_rgba(0,0,0,0.6),inset_8px_8px_20px_rgba(255,255,255,0.15)]" />
-        <img src={transparentLogo} alt="Gully Cricket Scorer" className="relative h-44 w-44 animate-spin-slow rounded-full drop-shadow-2xl" />
+    <div className="flex min-h-screen flex-col items-center justify-center gap-6 bg-background brush-bg animate-splash-fade">
+      <div className="relative h-44 w-44">
+        <img src={transparentLogo} alt="Gully Cricket Scorer" className="absolute inset-0 h-44 w-44 animate-spin-slow rounded-full drop-shadow-2xl" />
+        <div className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-br from-white/25 via-transparent to-black/50 shadow-[inset_-10px_-10px_24px_rgba(0,0,0,0.55),inset_10px_10px_24px_rgba(255,255,255,0.18)]" />
       </div>
       <h1 className="display text-3xl tracking-wider text-foreground">GULLY CRICKET SCORER</h1>
       <p className="text-xs uppercase tracking-[0.4em] text-orange">loading the pitch…</p>
