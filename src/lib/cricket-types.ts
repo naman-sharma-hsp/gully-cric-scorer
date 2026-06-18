@@ -141,7 +141,8 @@ export interface Match {
   tossDecision?: "bat" | "bowl";
   innings: [InningState, InningState];
   currentInning: 0 | 1;
-  status: "setup" | "rules" | "rellu" | "captains" | "toss" | "live" | "finished";
+  status: "setup" | "rules" | "rellu" | "captains" | "toss" | "live" | "finished" | "quit";
+  quitAt?: number;
   result?: {
     winnerTeamId?: string; // undefined = tie
     margin: string; // e.g. "5 wickets" or "23 runs" or "Tie"
