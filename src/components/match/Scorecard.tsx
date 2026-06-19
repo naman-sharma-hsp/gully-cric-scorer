@@ -160,6 +160,8 @@ function InningCard({ inn, title, pname }: { inn: InningState; title: string; pn
           </tbody>
         </table>
       </div>
+
+      <OverByOver inn={inn} pname={pname} />
     </Card>
   );
 }
