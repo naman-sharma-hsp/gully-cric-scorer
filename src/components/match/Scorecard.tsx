@@ -1,4 +1,4 @@
-import type { Match, InningState } from "@/lib/cricket-types";
+import type { Match, InningState, Delivery } from "@/lib/cricket-types";
 import { useApp } from "@/lib/store";
 import { Card } from "@/components/ui/card";
 
@@ -10,6 +10,64 @@ export function Scorecard({ match }: { match: Match }) {
       {match.innings.map((inn, i) => (
         <InningCard key={i} inn={inn} title={`${i === 0 ? "1st" : "2nd"} Innings · ${i === 0 ? match.team1.teamName : match.team2.teamName}`} pname={pname} />
       ))}
+    </div>
+  );
+}
+
+function ballLabel(d: Delivery): string {
+  if (d.dismissal) return "W";
+  if (d.extraKind === "wide") return `Wd${d.runs ? `+${d.runs}` : ""}`;
+  if (d.extraKind === "noball") return `Nb${d.runs ? `+${d.runs}` : ""}`;
+  if (d.extraKind === "bye") return `B${d.runs}`;
+  if (d.extraKind === "legbye") return `Lb${d.runs}`;
+  if (d.extraKind === "penalty") return `P${d.runs}`;
+  return String(d.runs);
+}
+
+function ballColor(d: Delivery): string {
+  if (d.dismissal) return "bg-red-600 text-white";
+  if (d.runs === 6) return "bg-orange text-black";
+  if (d.runs === 4) return "bg-lime text-black";
+  if (d.extraKind) return "bg-muted text-foreground";
+  if (d.runs === 0) return "bg-background border border-border text-muted-foreground";
+  return "bg-secondary text-foreground";
+}
+
+function OverByOver({ inn, pname }: { inn: InningState; pname: (id?: string) => string }) {
+  const overs: Delivery[][] = [];
+  let cur: Delivery[] = [];
+  let legalInOver = 0;
+  for (const d of inn.deliveries) {
+    cur.push(d);
+    if (d.isLegal) legalInOver += 1;
+    if (legalInOver === 6) { overs.push(cur); cur = []; legalInOver = 0; }
+  }
+  if (cur.length) overs.push(cur);
+  if (overs.length === 0) return null;
+  return (
+    <div>
+      <div className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">Over by Over</div>
+      <div className="space-y-2">
+        {overs.map((balls, i) => {
+          const runs = balls.reduce((s, b) => s + (b.extraRuns ?? 0) + b.runs, 0);
+          const wkts = balls.filter((b) => b.dismissal).length;
+          const bowlerId = balls[0]?.bowlerId;
+          return (
+            <div key={i} className="flex items-center gap-2 text-xs">
+              <div className="w-10 shrink-0 font-mono text-muted-foreground">Ov {i + 1}</div>
+              <div className="flex flex-wrap gap-1">
+                {balls.map((b) => (
+                  <span key={b.id} className={`inline-flex h-6 min-w-[1.5rem] items-center justify-center rounded px-1 font-mono text-[11px] font-bold ${ballColor(b)}`}>{ballLabel(b)}</span>
+                ))}
+              </div>
+              <div className="ml-auto shrink-0 text-right">
+                <div className="font-mono font-bold">{runs}{wkts ? `-${wkts}` : ""}</div>
+                <div className="max-w-[80px] truncate text-[10px] text-muted-foreground">{pname(bowlerId)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
