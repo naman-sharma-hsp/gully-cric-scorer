@@ -91,6 +91,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:description", content: "Gully Cricket Scorer is a mobile app for scoring and managing local cricket matches." },
       { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/goX2wJzMYjQoquQVHZ7cMAnRx8u1/social-images/social-1781705922511-logo.webp" },
       { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/goX2wJzMYjQoquQVHZ7cMAnRx8u1/social-images/social-1781705922511-logo.webp" },
+      { name: "theme-color", content: "#0b0b0b" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Gully Scorer" },
     ],
     links: [
       { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
@@ -103,12 +107,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap",
       },
-    ],
-    meta_extra: [
-      { name: "theme-color", content: "#0b0b0b" },
-      { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
-      { name: "apple-mobile-web-app-title", content: "Gully Scorer" },
     ],
   }),
   shellComponent: RootShell,
