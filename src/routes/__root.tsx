@@ -94,6 +94,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     ],
     links: [
       { rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+      { rel: "apple-touch-icon", href: "/logo-transparent.png" },
+      { rel: "manifest", href: "/manifest.webmanifest" },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -101,6 +103,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap",
       },
+    ],
+    meta_extra: [
+      { name: "theme-color", content: "#0b0b0b" },
+      { name: "apple-mobile-web-app-capable", content: "yes" },
+      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      { name: "apple-mobile-web-app-title", content: "Gully Scorer" },
     ],
   }),
   shellComponent: RootShell,
